@@ -1,0 +1,30 @@
+:root{
+	--bg:#f6f7fb;
+	--card:#fff;
+	--accent:#2b7cff;
+}
+*{box-sizing:border-box}
+body{font-family:Segoe UI, Roboto, Arial, sans-serif;margin:0;background:var(--bg);color:#222}
+.slideshow-page{max-width:900px;margin:36px auto;padding:20px}
+h1{text-align:center;margin-bottom:18px}
+.slideshow{position:relative;max-width:800px;margin:0 auto;background:var(--card);border-radius:8px;box-shadow:0 6px 20px rgba(20,30,50,.08);overflow:hidden}
+.lides-wrapper{overflow:hidden}
+.slideshow .slides{display:flex;will-change:transform;animation:slideshow 12s infinite}
+.slide{width:100%;flex-shrink:0;display:block;object-fit:cover;height:480px}
+
+/* Pause on hover */
+.slideshow:hover .slides{animation-play-state:paused}
+
+@keyframes slideshow{
+	0%{transform:translateX(0%)}
+	25%{transform:translateX(0%)}
+	33.333%{transform:translateX(-100%)}
+	58.333%{transform:translateX(-100%)}
+	66.666%{transform:translateX(-200%)}
+	91.666%{transform:translateX(-200%)}
+	100%{transform:translateX(0%)}
+}
+
+@media (max-width:640px){
+	.slide{height:260px}
+}
