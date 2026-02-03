@@ -8,8 +8,32 @@
 </head>
 <body>
 	<main class="single-image">
-		<img src="Frontend/our-images/unopened.svg" alt="Unopened Envelope" class="envelope">
+		<img id="envelope" src="Frontend/our-images/unopened.svg" alt="Unopened Envelope" class="envelope" role="button" tabindex="0" aria-pressed="false">
 	</main>
 
-</body>
-</html>
+	<script>
+	// Toggle envelope between unopened and opened on click or Enter/Space
+	(function(){
+		const env = document.getElementById('envelope');
+		const unopened = 'Frontend/our-images/unopened.svg';
+		const opened = 'Frontend/our-images/opened.svg';
+		function setOpened(isOpen){
+			env.src = isOpen ? opened : unopened;
+			env.classList.toggle('opened', isOpen);
+			env.setAttribute('aria-pressed', String(isOpen));
+		}
+		let isOpen = false;
+		env.addEventListener('click', ()=>{ isOpen = true; setOpened(true); });
+		// keyboard accessibility: Enter or Space opens
+		env.addEventListener('keydown', (e)=>{
+			if(e.key === 'Enter' || e.key === ' ' || e.code === 'Space'){
+				e.preventDefault();
+				isOpen = true;
+				setOpened(true);
+			}
+		});
+	})();
+	</script>
+
+	</body>
+	</html>

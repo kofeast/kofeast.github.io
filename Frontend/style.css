@@ -34,6 +34,21 @@ h1{text-align:center;margin-bottom:18px}
 	height:auto;
 	display:block;
 	margin:0 auto;
+	cursor: pointer;
+	transition: transform .6s cubic-bezier(.2,.9,.2,1), opacity .35s ease;
+	will-change: transform, opacity;
+}
+
+.single-image .envelope:focus{
+	outline:4px solid rgba(43,124,255,.18);
+	outline-offset:6px;
+	border-radius:6px;
+}
+
+.single-image .envelope.opened{
+	transform: translateY(-10px) scale(1.02);
+	opacity:1;
+	filter: drop-shadow(0 10px 30px rgba(20,30,50,.12));
 }
 
 @media (max-width:640px){
