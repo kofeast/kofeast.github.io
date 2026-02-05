@@ -11,27 +11,304 @@
 		<img id="envelope" src="Frontend/our-images/unopened.svg" alt="Unopened Envelope" class="envelope" role="button" tabindex="0" aria-pressed="false">
 	</main>
 
+
+	<!-- Letter actions: show yes/no svgs under the letter -->
+	<div id="letter-actions" class="letter-actions" style="display:none;" aria-hidden="true">
+		<button id="yes-btn" class="letter-btn yes" aria-label="Yes">
+			<img src="Frontend/our-images/yes.svg" alt="Yes">
+		</button>
+		<button id="no-btn" class="letter-btn no" aria-label="No">
+			<img src="Frontend/our-images/no.svg" alt="No">
+		</button>
+	</div>
+
+
 	<script>
-	// Toggle envelope between unopened and opened on click or Enter/Space
+	// Transition sequence: unopened -> cathaha -> stillhere -> larry -> stubborn -> goodjob -> catvers -> opened -> letter
 	(function(){
 		const env = document.getElementById('envelope');
-		const unopened = 'Frontend/our-images/unopened.svg';
-		const opened = 'Frontend/our-images/opened.svg';
-		function setOpened(isOpen){
-			env.src = isOpen ? opened : unopened;
-			env.classList.toggle('opened', isOpen);
-			env.setAttribute('aria-pressed', String(isOpen));
+		const base = 'Frontend/our-images/';
+		const seq = [
+			base + 'unopened.svg',
+			base + 'cathaha.svg',
+			base + 'stillhere.svg',
+			base + 'larry.svg',
+			base + 'stubborn.svg',
+			base + 'goodjob.svg',
+			base + 'CATVERS.svg',
+			base + 'opened.svg',
+			base + 'letter.svg'
+		];
+
+		// find current index in sequence, default to 0
+		function normalizeSrc(s){ return (s || '').toString().replace(/\\\\/g, '/').toLowerCase(); }
+		const curSrc = normalizeSrc(env.getAttribute('src') || env.src);
+		let index = seq.findIndex(p => normalizeSrc(p).endsWith(curSrc.split('/').pop()));
+		if(index === -1) index = 0;
+
+		function applyIndex(i){
+			env.src = seq[i];
+			// keep opened transform for opened and letter states
+			if(normalizeSrc(seq[i]).endsWith('opened.svg') || normalizeSrc(seq[i]).endsWith('letter.svg')){
+				env.classList.add('opened');
+				env.setAttribute('aria-pressed', 'true');
+			}else{
+				env.classList.remove('opened');
+				env.setAttribute('aria-pressed', 'false');
+			}
+
+			// small-size tweaks for specific frames
+			const smallNames = ['stubborn.svg','goodjob.svg'];
+			const isSmall = smallNames.some(n => normalizeSrc(seq[i]).endsWith(n));
+			env.classList.toggle('small', isSmall);
+
+			// toggle letter actions when on final (letter) frame
+			const actions = document.getElementById('letter-actions');
+			if(actions){
+				if(i === seq.length - 1){
+					actions.style.display = 'flex';
+					actions.setAttribute('aria-hidden', 'false');
+				}else{
+					actions.style.display = 'none';
+					actions.setAttribute('aria-hidden', 'true');
+				}
+			}
+
 		}
-		let isOpen = false;
-		env.addEventListener('click', ()=>{ isOpen = true; setOpened(true); });
-		// keyboard accessibility: Enter or Space opens
+
+		// ensure initial state reflects the current src
+		applyIndex(index);
+
+		env.addEventListener('click', ()=>{
+			// If the envelope currently shows YEES.svg, clicking it advances to flowers and removes actions
+			const cur = normalizeSrc(env.getAttribute('src') || env.src || '');
+			if(cur.endsWith('yees.svg')){
+				env.src = base + 'flowersforu.svg';
+				env.classList.remove('yees');
+				const actions = document.getElementById('letter-actions');
+				if(actions){
+					actions.style.display = 'none';
+					actions.setAttribute('aria-hidden', 'true');
+					actions.innerHTML = '';
+				}
+				return;
+			}
+			// Otherwise, advance through the normal sequence
+			if(index < seq.length - 1){
+				index += 1;
+				applyIndex(index);
+			}
+		});
+
+
+
+		// keyboard accessibility: Enter/Space like click
 		env.addEventListener('keydown', (e)=>{
 			if(e.key === 'Enter' || e.key === ' ' || e.code === 'Space'){
 				e.preventDefault();
-				isOpen = true;
-				setOpened(true);
+				env.click();
 			}
 		});
+
+		// yes/no handlers (use the svgs as buttons)
+		const yesBtn = document.getElementById('yes-btn');
+		const noBtn = document.getElementById('no-btn');
+		if(yesBtn) yesBtn.addEventListener('click', ()=>{
+			console.log('letter:yes clicked');
+			// If envelope is currently showing YEES, advance to flowers and remove buttons
+			const cur = (env.getAttribute('src') || env.src || '').toString().toLowerCase();
+			if(cur.endsWith('yees.svg')){
+				env.src = base + 'flowersforu.svg';
+				env.classList.remove('yees');
+				const actions = document.getElementById('letter-actions');
+				if(actions){
+					actions.style.display = 'none';
+					actions.setAttribute('aria-hidden', 'true');
+					actions.innerHTML = '';
+				}
+				return;
+			}
+			// otherwise show YEES first (make it bigger) and remove the action buttons
+			env.src = base + 'YEES.svg';
+			env.classList.add('yees');
+			const actions = document.getElementById('letter-actions');
+			if(actions){
+				actions.style.display = 'none';
+				actions.setAttribute('aria-hidden', 'true');
+				actions.innerHTML = '';
+			}
+		});
+		if(noBtn) {
+			noBtn.addEventListener('click', ()=>{ console.log('letter:no clicked'); });
+
+				// Improved evasive behavior: promote to viewport roaming when approached
+				(function(){
+					const container = document.querySelector('.letter-actions');
+					if(!container) return;
+					let rafId = null;
+					let freemode = false;
+					let curLeft = 0, curTop = 0;
+					let targetLeft = 0, targetTop = 0;
+					// smaller reaction radius and reduced jump magnitude
+					const threshold = 220; // smaller distance before it reacts
+					const extraMax = 160; // smaller maximum jump
+
+					function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+					function updatePosition(){
+						// much slower interpolation for gentler movement
+						curLeft += (targetLeft - curLeft) * 0.12;
+						curTop += (targetTop - curTop) * 0.12;
+						noBtn.style.left = Math.round(curLeft) + 'px';
+						noBtn.style.top = Math.round(curTop) + 'px';
+						if(Math.abs(targetLeft - curLeft) < 0.5 && Math.abs(targetTop - curTop) < 0.5){
+							rafId = null;
+							return;
+						}
+						rafId = requestAnimationFrame(updatePosition);
+					}
+
+					container.addEventListener('pointermove', (e)=>{
+						const bRect = noBtn.getBoundingClientRect();
+						const btnCx = bRect.left + bRect.width/2;
+						const btnCy = bRect.top + bRect.height/2;
+						const dx = e.clientX - btnCx;
+						const dy = e.clientY - btnCy;
+						const dist = Math.hypot(dx, dy);
+
+						if(dist < threshold && !freemode){
+							freemode = true;
+							noBtn.style.position = 'fixed';
+							noBtn.style.left = bRect.left + 'px';
+							noBtn.style.top = bRect.top + 'px';
+							noBtn.style.transform = 'none';
+							curLeft = bRect.left;
+							curTop = bRect.top;
+							targetLeft = curLeft;
+							targetTop = curTop;
+						}
+
+						if(freemode){
+							const push = (threshold - dist) / threshold;
+							const nx = dx / (dist || 1);
+							const ny = dy / (dist || 1);
+							// minimal extra multiplier when very close
+							const closeMultiplier = dist < (threshold * 0.35) ? 1.05 : 1.0;
+							const desiredLeft = clamp(curLeft + (-nx * push * extraMax * closeMultiplier), 8, window.innerWidth - bRect.width - 8);
+							const desiredTop = clamp(curTop + (-ny * push * extraMax * closeMultiplier), 8, window.innerHeight - bRect.height - 8);
+							targetLeft = desiredLeft;
+							targetTop = desiredTop;
+							if(dist < 30){
+								// very tiny nudge toward target (subtle)
+								curLeft = curLeft * 0.95 + targetLeft * 0.05;
+								curTop = curTop * 0.95 + targetTop * 0.05;
+							}
+						}else{
+							const cRect = container.getBoundingClientRect();
+							const maxOffsetX = Math.max((cRect.width/2 - bRect.width/2) - 8, 20);
+							const maxOffsetY = Math.max((cRect.height/2 - bRect.height/2) - 8, 20);
+							if(dist < threshold){
+								const push = (threshold - dist) / threshold;
+								const nx = dx / (dist || 1);
+								const ny = dy / (dist || 1);
+								const desiredX = clamp(-nx * push * (extraMax*0.08), -maxOffsetX, maxOffsetX);
+								const desiredY = clamp(-ny * push * (extraMax*0.08), -maxOffsetY, maxOffsetY);
+								noBtn.style.transform = `translate(${desiredX}px, ${desiredY}px)`;
+							}else{
+								noBtn.style.transform = '';
+							}
+						}
+
+						if(!rafId && freemode) rafId = requestAnimationFrame(updatePosition);
+					});
+
+					container.addEventListener('pointerleave', ()=>{
+						if(!freemode) {
+							noBtn.style.transform = '';
+						}
+					});
+				})();
+		}
+	})();
+	</script>
+
+	<!-- Background audio + controls -->
+	<audio id="bg-audio" src="Frontend/audio/The Temptations - My Girl (Lyric Video) - TheTemptationsVEVO.mp3" loop preload="auto" autoplay></audio>
+	<div id="audio-control" class="audio-control" aria-hidden="false">
+		<button id="audio-toggle" class="audio-toggle" aria-pressed="false" title="Play background music">🔈</button>
+		<input id="volume-slider" class="volume-slider" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Volume">
+	</div>
+
+	<!-- no fallback prompt: attempt autoplay silently on load -->
+
+	<script>
+	// Background audio controls: play/pause and volume slider
+	(function(){
+		const audio = document.getElementById('bg-audio');
+		const btn = document.getElementById('audio-toggle');
+		const slider = document.getElementById('volume-slider');
+		// no enable UI (autoplay-only)
+
+		// restore previous volume if present
+		const saved = localStorage.getItem('bg-music-volume');
+		if(saved !== null){
+			audio.volume = Number(saved);
+			slider.value = audio.volume;
+		}else{
+			audio.volume = Number(slider.value);
+		}
+
+		function updateIcon(){
+			btn.textContent = audio.paused ? '🔈' : '🔊';
+			btn.setAttribute('aria-pressed', String(!audio.paused));
+		}
+
+		btn.addEventListener('click', ()=>{
+			if(audio.paused){
+				audio.play().catch(()=>{/* Autoplay blocked or user gesture required */});
+			}else{
+				audio.pause();
+			}
+			updateIcon();
+		});
+
+		slider.addEventListener('input', (e)=>{
+			audio.volume = Number(e.target.value);
+			localStorage.setItem('bg-music-volume', String(audio.volume));
+		});
+
+		btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); } });
+
+		// keep UI in sync
+		updateIcon();
+
+		// pause when page hidden
+		document.addEventListener('visibilitychange', ()=>{ if(document.hidden) audio.pause(); });
+
+
+		// Attempt to play immediately (no prompt). Retry a few times if initially blocked.
+		let attempts = 0;
+		const maxAttempts = 10;
+		const attemptInterval = 1000; // ms
+		function tryPlay(){
+			attempts++;
+			audio.play().then(()=>{
+				updateIcon();
+				console.log('audio:play succeeded on attempt', attempts);
+				clearInterval(retryTimer);
+			}).catch((err)=>{
+				console.warn('audio:play attempt', attempts, 'failed');
+				if(attempts >= maxAttempts){
+					clearInterval(retryTimer);
+					console.warn('audio:play - max attempts reached');
+				}
+			});
+		}
+		const retryTimer = setInterval(()=>{
+			tryPlay();
+		}, attemptInterval);
+		// Try immediately as well
+		tryPlay();
 	})();
 	</script>
 
