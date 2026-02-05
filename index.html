@@ -11,27 +11,239 @@
 		<img id="envelope" src="Frontend/our-images/unopened.svg" alt="Unopened Envelope" class="envelope" role="button" tabindex="0" aria-pressed="false">
 	</main>
 
+
+	<!-- Letter actions: show yes/no svgs under the letter -->
+	<div id="letter-actions" class="letter-actions" style="display:none;" aria-hidden="true">
+		<button id="yes-btn" class="letter-btn yes" aria-label="Yes">
+			<img src="Frontend/our-images/yes.svg" alt="Yes">
+		</button>
+		<button id="no-btn" class="letter-btn no" aria-label="No">
+			<img src="Frontend/our-images/no.svg" alt="No">
+		</button>
+	</div>
+
+
 	<script>
-	// Toggle envelope between unopened and opened on click or Enter/Space
+	// Transition sequence: unopened -> cathaha -> stillhere -> larry -> stubborn -> goodjob -> catvers -> opened -> letter
 	(function(){
 		const env = document.getElementById('envelope');
-		const unopened = 'Frontend/our-images/unopened.svg';
-		const opened = 'Frontend/our-images/opened.svg';
-		function setOpened(isOpen){
-			env.src = isOpen ? opened : unopened;
-			env.classList.toggle('opened', isOpen);
-			env.setAttribute('aria-pressed', String(isOpen));
+		const base = 'Frontend/our-images/';
+		const seq = [
+			base + 'unopened.svg',
+			base + 'cathaha.svg',
+			base + 'stillhere.svg',
+			base + 'larry.svg',
+			base + 'stubborn.svg',
+			base + 'goodjob.svg',
+			base + 'CATVERS.svg',
+			base + 'opened.svg',
+			base + 'letter.svg'
+		];
+
+		// find current index in sequence, default to 0
+		function normalizeSrc(s){ return (s || '').toString().replace(/\\\\/g, '/').toLowerCase(); }
+		const curSrc = normalizeSrc(env.getAttribute('src') || env.src);
+		let index = seq.findIndex(p => normalizeSrc(p).endsWith(curSrc.split('/').pop()));
+		if(index === -1) index = 0;
+
+		function applyIndex(i){
+			env.src = seq[i];
+			// keep opened transform for opened and letter states
+			if(normalizeSrc(seq[i]).endsWith('opened.svg') || normalizeSrc(seq[i]).endsWith('letter.svg')){
+				env.classList.add('opened');
+				env.setAttribute('aria-pressed', 'true');
+			}else{
+				env.classList.remove('opened');
+				env.setAttribute('aria-pressed', 'false');
+			}
+
+			// small-size tweaks for specific frames
+			const smallNames = ['stubborn.svg','goodjob.svg'];
+			const isSmall = smallNames.some(n => normalizeSrc(seq[i]).endsWith(n));
+			env.classList.toggle('small', isSmall);
+
+			// toggle letter actions when on final (letter) frame
+			const actions = document.getElementById('letter-actions');
+			if(actions){
+				if(i === seq.length - 1){
+					actions.style.display = 'flex';
+					actions.setAttribute('aria-hidden', 'false');
+				}else{
+					actions.style.display = 'none';
+					actions.setAttribute('aria-hidden', 'true');
+				}
+			}
+
 		}
-		let isOpen = false;
-		env.addEventListener('click', ()=>{ isOpen = true; setOpened(true); });
-		// keyboard accessibility: Enter or Space opens
+
+		// ensure initial state reflects the current src
+		applyIndex(index);
+
+		env.addEventListener('click', ()=>{
+			if(index < seq.length - 1){
+				index += 1;
+				applyIndex(index);
+			}
+		});
+
+
+
+		// keyboard accessibility: Enter/Space like click
 		env.addEventListener('keydown', (e)=>{
 			if(e.key === 'Enter' || e.key === ' ' || e.code === 'Space'){
 				e.preventDefault();
-				isOpen = true;
-				setOpened(true);
+				env.click();
 			}
 		});
+
+		// yes/no handlers (use the svgs as buttons)
+		const yesBtn = document.getElementById('yes-btn');
+		const noBtn = document.getElementById('no-btn');
+		if(yesBtn) yesBtn.addEventListener('click', ()=>{ console.log('letter:yes clicked'); });
+		if(noBtn) {
+			noBtn.addEventListener('click', ()=>{ console.log('letter:no clicked'); });
+
+			// Improved evasive behavior: smoothed, bounded escape using pointermove + rAF
+			(function(){
+				const container = document.querySelector('.letter-actions');
+				if(!container) return;
+				let targetX = 0, targetY = 0;
+				let curX = 0, curY = 0;
+				let rafId = null;
+				const threshold = 160; // start evading sooner
+				const extraMax = 220; // soft maximum offset
+
+				function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+
+				function updateTransform(){
+					// increase interpolation factor for snappier movement
+					curX += (targetX - curX) * 0.45;
+					curY += (targetY - curY) * 0.45;
+					noBtn.style.transform = `translate(${curX}px, ${curY}px)`;
+					// stop rAF when close to target
+					if(Math.abs(targetX - curX) < 0.5 && Math.abs(targetY - curY) < 0.5){
+						rafId = null;
+						return;
+					}
+					rafId = requestAnimationFrame(updateTransform);
+				}
+
+				container.addEventListener('pointermove', (e)=>{
+					const cRect = container.getBoundingClientRect();
+					const bRect = noBtn.getBoundingClientRect();
+					// center positions
+					const btnCx = bRect.left + bRect.width/2;
+					const btnCy = bRect.top + bRect.height/2;
+					const dx = e.clientX - btnCx;
+					const dy = e.clientY - btnCy;
+					const dist = Math.hypot(dx, dy);
+					// available space to move within container
+					const maxOffsetX = Math.max((cRect.width/2 - bRect.width/2) - 8, 20);
+					const maxOffsetY = Math.max((cRect.height/2 - bRect.height/2) - 8, 20);
+					if(dist < threshold){
+						const push = (threshold - dist) / threshold; // 0..1
+						// normalized away vector
+						const nx = dx / (dist || 1);
+						const ny = dy / (dist || 1);
+						// compute desired offsets away from cursor, bounded by available space
+						const desiredX = clamp(-nx * push * extraMax, -maxOffsetX, maxOffsetX);
+						const desiredY = clamp(-ny * push * extraMax, -maxOffsetY, maxOffsetY);
+						targetX = desiredX;
+						targetY = desiredY;
+					}else{
+						targetX = 0;
+						targetY = 0;
+					}
+					if(!rafId) rafId = requestAnimationFrame(updateTransform);
+				});
+
+				// reset when pointer leaves container
+				container.addEventListener('pointerleave', ()=>{
+					targetX = 0; targetY = 0;
+					if(!rafId) rafId = requestAnimationFrame(updateTransform);
+				});
+			})();
+		}
+	})();
+	</script>
+
+	<!-- Background audio + controls -->
+	<audio id="bg-audio" src="Frontend/audio/The Temptations - My Girl (Lyric Video) - TheTemptationsVEVO.mp3" loop preload="auto" autoplay></audio>
+	<div id="audio-control" class="audio-control" aria-hidden="false">
+		<button id="audio-toggle" class="audio-toggle" aria-pressed="false" title="Play background music">🔈</button>
+		<input id="volume-slider" class="volume-slider" type="range" min="0" max="1" step="0.01" value="0.5" aria-label="Volume">
+	</div>
+
+	<!-- no fallback prompt: attempt autoplay silently on load -->
+
+	<script>
+	// Background audio controls: play/pause and volume slider
+	(function(){
+		const audio = document.getElementById('bg-audio');
+		const btn = document.getElementById('audio-toggle');
+		const slider = document.getElementById('volume-slider');
+		// no enable UI (autoplay-only)
+
+		// restore previous volume if present
+		const saved = localStorage.getItem('bg-music-volume');
+		if(saved !== null){
+			audio.volume = Number(saved);
+			slider.value = audio.volume;
+		}else{
+			audio.volume = Number(slider.value);
+		}
+
+		function updateIcon(){
+			btn.textContent = audio.paused ? '🔈' : '🔊';
+			btn.setAttribute('aria-pressed', String(!audio.paused));
+		}
+
+		btn.addEventListener('click', ()=>{
+			if(audio.paused){
+				audio.play().catch(()=>{/* Autoplay blocked or user gesture required */});
+			}else{
+				audio.pause();
+			}
+			updateIcon();
+		});
+
+		slider.addEventListener('input', (e)=>{
+			audio.volume = Number(e.target.value);
+			localStorage.setItem('bg-music-volume', String(audio.volume));
+		});
+
+		btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); btn.click(); } });
+
+		// keep UI in sync
+		updateIcon();
+
+		// pause when page hidden
+		document.addEventListener('visibilitychange', ()=>{ if(document.hidden) audio.pause(); });
+
+
+		// Attempt to play immediately (no prompt). Retry a few times if initially blocked.
+		let attempts = 0;
+		const maxAttempts = 10;
+		const attemptInterval = 1000; // ms
+		function tryPlay(){
+			attempts++;
+			audio.play().then(()=>{
+				updateIcon();
+				console.log('audio:play succeeded on attempt', attempts);
+				clearInterval(retryTimer);
+			}).catch((err)=>{
+				console.warn('audio:play attempt', attempts, 'failed');
+				if(attempts >= maxAttempts){
+					clearInterval(retryTimer);
+					console.warn('audio:play - max attempts reached');
+				}
+			});
+		}
+		const retryTimer = setInterval(()=>{
+			tryPlay();
+		}, attemptInterval);
+		// Try immediately as well
+		tryPlay();
 	})();
 	</script>
 

@@ -51,6 +51,68 @@ h1{text-align:center;margin-bottom:18px}
 	filter: drop-shadow(0 10px 30px rgba(20,30,50,.12));
 }
 
+/* Slightly smaller variants for specific transition images */
+.single-image .envelope.small{
+	/* reduce rendered dimensions for specific frames */
+	width: clamp(200px,35vw,420px);
+	height: auto;
+}
+.single-image .envelope.opened.small{
+	/* keep the opened translate but don't further scale down */
+	transform: translateY(-10px) scale(1.02);
+}
+
+/* Letter actions layout */
+
+
 @media (max-width:640px){
 	.slide{height:260px}
 }
+
+/* Audio control UI */
+.audio-control{
+	position: fixed;
+	right: 18px;
+	bottom: 18px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	background: rgba(255,255,255,0.9);
+	padding: 6px 8px;
+	border-radius: 999px;
+	box-shadow: 0 6px 18px rgba(20,30,50,0.12);
+	z-index: 9999;
+}
+.audio-toggle{
+	background: transparent;
+	border: none;
+	font-size: 20px;
+	cursor: pointer;
+	padding: 6px;
+}
+.audio-toggle:focus{ outline: 2px solid rgba(43,124,255,.18); border-radius:6px; }
+.volume-slider{
+	width: 110px;
+}
+
+/* Letter actions (yes/no svgs) */
+.letter-actions{
+	width: clamp(320px,60vw,760px);
+	margin: 12px auto 0 auto;
+	display: none;
+	justify-content: space-between;
+	gap: 16px;
+}
+.letter-btn{
+	background: transparent;
+	border: none;
+	padding: 6px;
+	cursor: pointer;
+	display:flex;
+	align-items:center;
+	justify-content:center;
+	transition: transform .18s ease;
+}
+.letter-btn img{ width: clamp(96px,14vw,220px); height:auto; display:block }
+.letter-btn.no img{ width: clamp(96px,14vw,220px); }
+
